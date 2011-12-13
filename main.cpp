@@ -1,4 +1,24 @@
 #define _CRT_SECURE_NO_WARNINGS // shut up MSVC
+
+#ifdef _MSC_VER
+#define TEST_D3D9 1
+#include <d3d9.h>
+#include <d3dx9shader.h>
+
+extern "C" {
+typedef HRESULT (WINAPI * D3DXAssembleShaderFunc)(
+				   LPCSTR                          pSrcData,
+				   UINT                            SrcDataLen,
+				   CONST D3DXMACRO*                pDefines,
+				   LPD3DXINCLUDE                   pInclude,
+				   DWORD                           Flags,
+				   LPD3DXBUFFER*                   ppShader,
+				   LPD3DXBUFFER*                   ppErrorMsgs);
+static HINSTANCE s_D3DXDll;
+static D3DXAssembleShaderFunc s_D3DXAssemble;
+}
+#endif
+
 #include <cstdio>
 #include <string>
 #include <time.h>
@@ -124,6 +144,61 @@ static bool InitializeOpenGL ()
 	return hasGLSL;
 }
 
+
+
+#ifdef TEST_D3D9
+
+static IDirect3D9* s_D3D;
+static IDirect3DDevice9* s_D3DDevice;
+
+
+static bool InitializeD3D9 ()
+{
+	s_D3D = Direct3DCreate9(D3D_SDK_VERSION);
+	if(!s_D3D)
+		return false;
+	D3DDISPLAYMODE mode;
+	if (FAILED(s_D3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &mode)))
+		return false;
+
+	HWND window = ::GetDesktopWindow();
+
+	D3DPRESENT_PARAMETERS params;
+	ZeroMemory(&params, sizeof(params));
+	params.BackBufferWidth = 256;
+	params.BackBufferHeight = 256;
+	params.BackBufferFormat = mode.Format;
+	params.BackBufferCount = 1;
+	params.hDeviceWindow = window;
+
+	params.AutoDepthStencilFormat = D3DFMT_D16;
+	params.EnableAutoDepthStencil = FALSE;
+
+	params.Windowed = TRUE;
+	params.SwapEffect = D3DSWAPEFFECT_DISCARD;
+	params.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+
+	if (FAILED(s_D3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &s_D3DDevice)))
+	{
+		if (FAILED(s_D3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &params, &s_D3DDevice)))
+			return false;
+	}
+
+	s_D3DXDll = ::LoadLibraryA ("d3dx9_43.dll");
+	if (!s_D3DXDll)
+		return false;
+
+	s_D3DXAssemble = (D3DXAssembleShaderFunc)::GetProcAddress (s_D3DXDll, "D3DXAssembleShader");
+	if (!s_D3DXAssemble)
+		return false;
+
+	return true;
+}
+
+#endif // TEST_D3D9
+
+
+
 static void CheckErrors (const char* op)
 {
 	#if 1
@@ -241,42 +316,83 @@ static bool ReadStringFromFile (const string& pathName, std::string& output)
 }
 
 
-static void BenchmarkOnce (const string& name, const string& vs, const string& fs)
+
+#ifdef _MSC_VER
+static LARGE_INTEGER s_Time0;
+#else
+static timeval s_Time0;
+#endif
+
+
+static void TimerBegin()
 {
 	#ifdef _MSC_VER
+	QueryPerformanceCounter (&s_Time0);
+	#else
+	gettimeofday(&s_Time0, NULL);
+	#endif
+}
+
+
+static float TimerEnd()
+{
+	#ifdef _MSC_VER
+
 	static bool timerInited = false;
 	static LARGE_INTEGER ticksPerSec;
 	if (!timerInited) {
 		QueryPerformanceFrequency(&ticksPerSec);
 		timerInited = true;
 	}
-	LARGE_INTEGER ttt0;
-	QueryPerformanceCounter (&ttt0);
+	LARGE_INTEGER ttt1;
+	QueryPerformanceCounter (&ttt1);
+	float timeTaken = float(double(ttt1.QuadPart-s_Time0.QuadPart) / double(ticksPerSec.QuadPart));
+
 	#else
-	timeval ttt0;
-	gettimeofday( &ttt0, NULL );
+
+	timeval ttt1;
+	gettimeofday( &ttt1, NULL );
+	timeval ttt2;
+	timersub( &ttt1, &s_Time0, &ttt2 );
+	float timeTaken = ttt2.tv_sec + ttt2.tv_usec * 1.0e-6f;
+
 	#endif
-	
+
+	return timeTaken;
+}
+
+
+static void BenchmarkGL (const string& name, const string& vs, const string& fs)
+{
+	TimerBegin ();
+
 	if (!TestShader (vs, fs))
 	{
 		printf ("ERROR: error testing shaders\n");
 		return;
 	}
 	
-	
-	#ifdef _MSC_VER
-	LARGE_INTEGER ttt1;
-	QueryPerformanceCounter (&ttt1);
-	float timeTaken = float(double(ttt1.QuadPart-ttt0.QuadPart) / double(ticksPerSec.QuadPart));
-	#else
-	timeval ttt1;
-	gettimeofday( &ttt1, NULL );
-	timeval ttt2;
-	timersub( &ttt1, &ttt0, &ttt2 );
-	float timeTaken = ttt2.tv_sec + ttt2.tv_usec * 1.0e-6f;
-	#endif
-	
+	float timeTaken = TimerEnd();	
 	printf ("%s %.2fms\n", name.c_str(), timeTaken*1000.0f);
+}
+
+
+static void BenchmarkD3D9 (const string& name, const string& vs, const string& fs)
+{
+	#ifdef TEST_D3D9
+
+	TimerBegin ();
+
+	if (!TestShader (vs, fs))
+	{
+		printf ("ERROR: error testing shaders\n");
+		return;
+	}
+
+	float timeTaken = TimerEnd();	
+	printf ("%s %.2fms\n", name.c_str(), timeTaken*1000.0f);
+
+	#endif
 }
 
 
@@ -296,7 +412,7 @@ int main (int argc, char * const argv[])
 
 	string basename = argv[1];
 
-	string vs, fs, vsopt, fsopt;
+	string vs, fs, vsopt, fsopt, d3dvs, d3dps;
 	if (!ReadStringFromFile (basename+"-vs.txt", vs))
 	{
 		printf ("ERROR: can't read VS file %s\n", (basename+"-vs.txt").c_str());
@@ -316,6 +432,8 @@ int main (int argc, char * const argv[])
 		printf ("ERROR: can't read FS optimized file %s\n", (basename+"-opt-fs.txt").c_str());
 		return 1;
 	}
+	ReadStringFromFile (basename+"-d3d9-vs.txt", d3dvs);
+	ReadStringFromFile (basename+"-d3d9-ps.txt", d3dps);
 	
 	printf ("testing %s\n", basename.c_str());
 	
@@ -327,8 +445,8 @@ int main (int argc, char * const argv[])
 		printf ("ERROR: failed to load dummy shaders\n");
 	}
 	
-	BenchmarkOnce ("Raw: ", vs, fs);
-	BenchmarkOnce ("Opt: ", vsopt, fsopt);	
+	BenchmarkGL ("Raw: ", vs, fs);
+	BenchmarkGL ("Opt: ", vsopt, fsopt);	
 	
     return 0;
 }
