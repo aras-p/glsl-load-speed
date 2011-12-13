@@ -114,6 +114,11 @@ static bool InitializeOpenGL ()
 	}
 #endif
 
+	const GLubyte* renderer = glGetString (GL_RENDERER);
+	const GLubyte* version = glGetString (GL_VERSION);
+	printf ("GL renderer: %s\n", renderer);
+	printf ("GL version: %s\n", version);
+
 	glViewport (0,0,1,1);
 	
 	return hasGLSL;
@@ -121,7 +126,7 @@ static bool InitializeOpenGL ()
 
 static void CheckErrors (const char* op)
 {
-	#if 0
+	#if 1
 	GLenum err = glGetError();
 	if (err != GL_NO_ERROR)
 	{
@@ -239,7 +244,14 @@ static bool ReadStringFromFile (const char* pathName, std::string& output)
 static void BenchmarkOnce (const string& vs, const string& fs)
 {
 	#ifdef _MSC_VER
-	DWORD ttt0 = GetTickCount();
+	static bool timerInited = false;
+	static LARGE_INTEGER ticksPerSec;
+	if (!timerInited) {
+		QueryPerformanceFrequency(&ticksPerSec);
+		timerInited = true;
+	}
+	LARGE_INTEGER ttt0;
+	QueryPerformanceCounter (&ttt0);
 	#else
 	timeval ttt0;
 	gettimeofday( &ttt0, NULL );
@@ -253,8 +265,9 @@ static void BenchmarkOnce (const string& vs, const string& fs)
 	
 	
 	#ifdef _MSC_VER
-	DWORD ttt1 = GetTickCount();
-	float timeTaken = (ttt1-ttt0) * 0.001f;
+	LARGE_INTEGER ttt1;
+	QueryPerformanceCounter (&ttt1);
+	float timeTaken = float(double(ttt1.QuadPart-ttt0.QuadPart) / double(ticksPerSec.QuadPart));
 	#else
 	timeval ttt1;
 	gettimeofday( &ttt1, NULL );
