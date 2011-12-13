@@ -498,12 +498,6 @@ static float BenchmarkD3D9 (const string& vs, const string& fs)
 
 int main (int argc, char * const argv[])
 {
-	if (argc < 2)
-	{
-		printf ("usage: GlslLoadSpeed <filepat>\n");
-		return 1;
-	}
-	
 	if (!InitializeOpenGL())
 	{
 		printf ("ERROR: no OpenGL/GLSL\n");
@@ -513,58 +507,70 @@ int main (int argc, char * const argv[])
 	bool hasD3D = InitializeD3D9 ();
 	#endif
 
-	string basename = argv[1];
-
-	string vs, fs, vsopt, fsopt, d3dvs, d3dps;
-	if (!ReadStringFromFile (basename+"-vs.txt", vs))
-	{
-		printf ("ERROR: can't read VS file %s\n", (basename+"-vs.txt").c_str());
-		return 1;
-	}
-	if (!ReadStringFromFile (basename+"-fs.txt", fs))
-	{
-		printf ("ERROR: can't read FS file %s\n", (basename+"-fs.txt").c_str());
-		return 1;
-	}
-	if (!ReadStringFromFile (basename+"-opt-vs.txt", vsopt))
-	{
-		vsopt = vs;
-	}
-	if (!ReadStringFromFile (basename+"-opt-fs.txt", fsopt))
-	{
-		printf ("ERROR: can't read FS optimized file %s\n", (basename+"-opt-fs.txt").c_str());
-		return 1;
-	}
-	ReadStringFromFile (basename+"-d3d9-vs.txt", d3dvs);
-	ReadStringFromFile (basename+"-d3d9-ps.txt", d3dps);
-	
-	printf ("testing %s...\n", basename.c_str());
-	
 	// create dummy shaders to prewarm/load the compiler
 	string dummyVS = "void main(void) { gl_Position = vec4(0.0); }";
 	string dummyFS = "void main(void) { gl_FragColor = vec4(1.0,0.0,0.0,1.0); }";
 	if (!TestShader (dummyVS, dummyFS))
 	{
 		printf ("ERROR: failed to load dummy shaders\n");
+		return 1;
 	}
-	
-	float timeGL = BenchmarkGL (vs, fs);
-	float timeGLOpt = BenchmarkGL (vsopt, fsopt);
 
-	#ifdef TEST_D3D9
-	float timeD3D = 0.0f;
-	if (hasD3D && !d3dvs.empty() && !d3dps.empty())
-		timeD3D = BenchmarkD3D9(d3dvs, d3dps);
-	#endif
-
-	printf ("GL:           %.2fms\n", timeGL);
-	printf ("GL Optimized: %.2fms (%.2fms less, or %.2f times faster)\n", timeGLOpt, timeGL-timeGLOpt, timeGL/timeGLOpt);
-	#ifdef TEST_D3D9
-	if (timeD3D != 0.0f)
+	const char* shaders[] = {
+		"shaders/treeleaf",
+		"shaders/fxaa311pc39",
+		"shaders/prepasslight",
+		"shaders/prlxspec",
+		"shaders/miatest",
+		"shaders/ssao",
+	};
+	for (int i = 0; i < sizeof(shaders)/sizeof(shaders[0]); ++i)
 	{
-		printf ("D3D9:         %.2fms (%.2fms less, or %.2f times faster)\n", timeD3D, timeGL-timeD3D, timeGL/timeD3D);
+		string basename = shaders[i];
+
+		string vs, fs, vsopt, fsopt, d3dvs, d3dps;
+		if (!ReadStringFromFile (basename+"-vs.txt", vs))
+		{
+			printf ("ERROR: can't read VS file %s\n", (basename+"-vs.txt").c_str());
+			return 1;
+		}
+		if (!ReadStringFromFile (basename+"-fs.txt", fs))
+		{
+			printf ("ERROR: can't read FS file %s\n", (basename+"-fs.txt").c_str());
+			return 1;
+		}
+		if (!ReadStringFromFile (basename+"-opt-vs.txt", vsopt))
+		{
+			vsopt = vs;
+		}
+		if (!ReadStringFromFile (basename+"-opt-fs.txt", fsopt))
+		{
+			printf ("ERROR: can't read FS optimized file %s\n", (basename+"-opt-fs.txt").c_str());
+			return 1;
+		}
+		ReadStringFromFile (basename+"-d3d9-vs.txt", d3dvs);
+		ReadStringFromFile (basename+"-d3d9-ps.txt", d3dps);
+		
+		printf ("\n**** Shader %s:\n", basename.c_str());
+				
+		float timeGL = BenchmarkGL (vs, fs);
+		float timeGLOpt = BenchmarkGL (vsopt, fsopt);
+
+		#ifdef TEST_D3D9
+		float timeD3D = 0.0f;
+		if (hasD3D && !d3dvs.empty() && !d3dps.empty())
+			timeD3D = BenchmarkD3D9(d3dvs, d3dps);
+		#endif
+
+		printf ("GL:           %.2fms\n", timeGL);
+		printf ("GL Optimized: %.2fms (%.2fms less, or %.2f times faster)\n", timeGLOpt, timeGL-timeGLOpt, timeGL/timeGLOpt);
+		#ifdef TEST_D3D9
+		if (timeD3D != 0.0f)
+		{
+			printf ("D3D9:         %.2fms (%.2fms less, or %.2f times faster)\n", timeD3D, timeGL-timeD3D, timeGL/timeD3D);
+		}
+		#endif
 	}
-	#endif
 	
     return 0;
 }

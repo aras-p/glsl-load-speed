@@ -1,0 +1,29 @@
+GL renderer: AMD Radeon HD 6800 Series
+GL version: 4.1.10750 Compatibility Profile Context
+
+**** Shader shaders/treeleaf:
+GL:           23.70ms
+GL Optimized: 20.16ms (3.55ms less, or 1.18 times faster)
+
+**** Shader shaders/fxaa311pc39:
+GL:           73.18ms
+GL Optimized: 66.32ms (6.85ms less, or 1.10 times faster)
+
+**** Shader shaders/prepasslight:
+GL:           18.42ms
+GL Optimized: 13.79ms (4.63ms less, or 1.34 times faster)
+
+**** Shader shaders/prlxspec:
+GL:           22.30ms
+GL Optimized: 19.14ms (3.16ms less, or 1.17 times faster)
+D3D9:         5.76ms (16.54ms less, or 3.87 times faster)
+
+**** Shader shaders/miatest:
+GL:           49.51ms
+GL Optimized: 42.72ms (6.79ms less, or 1.16 times faster)
+D3D9:         17.73ms (31.78ms less, or 2.79 times faster)
+
+**** Shader shaders/ssao:
+GL:           37.37ms
+GL Optimized: 35.74ms (1.63ms less, or 1.05 times faster)
+D3D9:         24.79ms (12.58ms less, or 1.51 times faster)
