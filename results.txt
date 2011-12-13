@@ -29,3 +29,13 @@ PC: 18.53ms
 ./GlslLoadSpeed shaders/prepasslight-opt-vs.txt shaders/prepasslight-opt-fs.txt
 Mac: 2.14ms (2.63ms or 2.22 times faster)
 PC: 14.22ms (4.31ms or 1.30 times faster)
+
+
+**** Mental Ray's architectural shader "clone" (complex & not optimized for realtime)
+
+./GlslLoadSpeed shaders/miatest-vs.txt shaders/miatest-fs.txt
+Mac:
+PC: 49.90ms
+./GlslLoadSpeed shaders/miatest-opt-vs.txt shaders/miatest-opt-fs.txt
+Mac:
+PC: 43.10ms (6.8ms or 1.16 times faster)

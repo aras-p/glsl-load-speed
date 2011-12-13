@@ -1,0 +1,424 @@
+#define DIRECTIONAL
+#define LIGHTMAP_OFF
+#define DIRLIGHTMAP_OFF
+#define SHADOWS_OFF
+
+
+#include "HLSLSupport.cginc"
+#define UNITY_PASS_FORWARDBASE
+#include "UnityCG.cginc"
+#include "Lighting.cginc"
+#include "AutoLight.cginc"
+
+#define INTERNAL_DATA half3 TtoW0; half3 TtoW1; half3 TtoW2;
+#define WorldReflectionVector(data,normal) reflect (data.worldRefl, half3(dot(data.TtoW0,normal), dot(data.TtoW1,normal), dot(data.TtoW2,normal)))
+#define WorldNormalVector(data,normal) fixed3(dot(data.TtoW0,normal), dot(data.TtoW1,normal), dot(data.TtoW2,normal))
+
+		struct Input {
+			float2 uv_MainTex;
+			float2 uv_BumpMap;
+			float3 viewDir;
+			float3 worldRefl;
+			float3 worldNormal;
+			INTERNAL_DATA
+		};
+		
+#ifndef MIA_LIGHTING_INCLUDED
+#define MIA_LIGHTING_INCLUDED
+
+
+struct MySurfaceOutput {
+	float3 Albedo;
+	float3 Normal;
+	float3 Emission;
+	float Reflectivity;
+	float Specular;
+	float Roughness;
+	float Alpha;
+};
+
+
+float _Rolloff;
+inline float LambertTermWithRolloff (float3 normal, float3 lightDir)
+{
+	return max(0.0f, dot (normal, lightDir) + _Rolloff) / (1.0f + _Rolloff * 2.0f);
+}
+
+inline float BlinnTermWithRolloff (float3 normal, float3 halfDir)
+{
+	return max(0.0f, dot (normal, halfDir) + _Rolloff * 2.0f) / (1.0f + _Rolloff * 2.0f); 
+}
+
+float _Falloff;
+inline float FresnelTerm (float refl0, float refl90, float cosA)
+{
+	// ala Schlick interpoliation
+	float t = pow (1.0f - cosA, _Falloff);
+	return refl0 * (1-t) + refl90 * t;
+}
+
+inline float CTGeometricTerm (float NdotL, float NdotH, float NdotV, float VdotH)
+{			
+	return min (1.0, min (
+		(2.0 * NdotH * NdotV) / VdotH,
+		(2.0 * NdotH * NdotL) / VdotH));
+}
+
+inline float CTRoughnessTerm (float roughness, float NdotH)
+{
+	float mSq = roughness * roughness;
+	// though original Beckmann doesn't have division by 4
+	// in Engel's book and other implementations on the web have it
+	// it makes specular look right as well, so what do I know?
+	float a = 1.0 / (4.0 * mSq * pow (NdotH, 4.0)); 
+	float b = NdotH * NdotH - 1.0f;
+	float c = mSq * NdotH * NdotH;
+	
+	return a * exp (b / c);
+}
+
+inline float CookTorranceTerm (float roughness, float refl0, float refl90, float3 normal, float3 lightDir, float3 viewDir)
+{
+	float3 halfDir = normalize (lightDir + viewDir);
+
+	float nl = LambertTermWithRolloff (normal, lightDir);
+	float nh = BlinnTermWithRolloff (normal, halfDir);
+	float nv = max(0.0, dot (normal, viewDir));
+	float vh = max(0.0, dot (viewDir, halfDir));
+
+	float F = FresnelTerm (refl0, refl90, vh);
+	float G = CTGeometricTerm (nl, nh, nv, vh);
+	float R = CTRoughnessTerm (roughness, nh);
+	R = max (0, R);
+	
+	return max(0, (F * G * R) / (nv * nl));
+}
+	
+inline float OrenNayarTerm (float roughness, float3 normal, float3 lightDir, float3 viewDir)
+{
+	const float PI = 3.14159f;
+	const float INVERSE_PI = 1.0 / PI;
+	const float INVERSE_PI_SQ = INVERSE_PI * INVERSE_PI;
+
+	float rSq = roughness * roughness;
+	
+	float NdotL = LambertTermWithRolloff (normal, lightDir);
+	float NdotV = dot (normal, viewDir);
+
+	float a = max (acos (NdotV), acos (NdotL));
+	float b = min (acos (NdotV), acos (NdotL));
+	float y = dot (viewDir - normal * NdotV, lightDir - normal * NdotL);
+	
+	float K1 = rSq / (rSq + 0.33);
+	float K2 = rSq / (rSq + 0.09);
+	
+	float c1 = 1.0 - 0.5 * K1;
+	float c2 = 0.45 * K2;
+	c2 *= sin (a) - ((y >= 0.0)? 0.0: pow (2.0 * b * INVERSE_PI, 3.0));
+	float c3 = (1.0 / 8.0) * K2 * pow (4.0 * a * b * INVERSE_PI_SQ, 2.0);
+
+	float x = y * c2 * tan (b);
+	float e = (1 - abs (y)) * c3 * tan ((a + b) / 2.0);
+
+	return c1 + x + e;
+}
+
+inline float OrenNayarSimpleTerm (float roughness, float3 normal, float3 lightDir, float3 viewDir)
+{
+	const float PI = 3.14159f;
+	const float INVERSE_PI = 1.0 / PI;
+	const float INVERSE_PI_SQ = INVERSE_PI * INVERSE_PI;
+
+	float rSq = roughness * roughness;
+	
+	float NdotL = LambertTermWithRolloff (normal, lightDir);
+	float NdotV = dot (normal, viewDir);
+
+	// http://fgiesen.wordpress.com/2010/10/21/finish-your-derivations-please/
+	float x = sqrt((1.0 - NdotV*NdotV) * (1.0 - NdotL*NdotL)) / max(NdotV, NdotL);
+	float y = dot (viewDir - normal * NdotV, lightDir - normal * NdotL);
+	
+	float K1 = rSq / (rSq + 0.33);
+	float K2 = rSq / (rSq + 0.09);
+	
+	float c1 = 1.0 - 0.5 * K1;
+	float c2 = 0.45 * K2;
+	
+	return c1 + c2 * max (0, y) * x;
+}
+
+inline float EvalMipLevel (float3 uvw, float texResolution)
+{
+	float3 dxSize = ddx(uvw);
+	float3 dySize = ddy(uvw);
+
+	float  fMipLevel;
+	float  fMinTexCoordDelta;  
+	float3 dTexCoords;
+	
+	// Find min of change in u and v across quad: compute du and dv magnitude across quad
+	dTexCoords = dxSize * dxSize + dySize * dySize;
+	
+	// Standard mipmapping uses max here
+	fMinTexCoordDelta = max( dTexCoords.z, max( dTexCoords.x, dTexCoords.y )) * texResolution;
+	
+	// Compute the current mip level (* 0.5 is effectively computing a square root before )
+	fMipLevel = max( 0.5 * log2( fMinTexCoordDelta ), 0 );
+	return fMipLevel;
+}
+
+
+
+float _Roughness;
+float _Roughness2;
+float _Reflectivity;
+float _Refl0, _Refl90;
+float _Metalic;
+inline fixed4 LightingOrenNayar_CookTorrance (MySurfaceOutput s, float3 lightDir, float3 viewDir, float atten)
+{
+	float3 normal = normalize (s.Normal);
+	lightDir = normalize (lightDir);
+	viewDir = normalize (viewDir);
+				
+	float nl = LambertTermWithRolloff (normal, lightDir);
+
+	float diffRoughness = _Roughness2;
+	float specRoughness = max (0.01f, _Roughness * s.Roughness);
+
+	float refl0 = _Refl0 * _Reflectivity;
+	float refl90 = _Refl90 * _Reflectivity;
+	float spec = CookTorranceTerm (specRoughness, refl0, refl90, normal, lightDir, viewDir);
+	float3 specColor = lerp (_LightColor0.rgb * 2.0, s.Albedo, _Metalic);
+	
+	float3 diffColor = _LightColor0.rgb * 2.0;
+	float diffScatter = OrenNayarTerm (diffRoughness, normal, lightDir, viewDir);
+
+	fixed4 c;
+	c.rgb = (lerp (s.Albedo * diffColor * diffScatter, specColor * spec, s.Reflectivity)) * nl * atten;
+	c.a = s.Alpha;
+	return c;
+}
+
+inline fixed4 LightingOrenNayar_CookTorrance_SingleLightmap (MySurfaceOutput s, fixed4 color)
+{
+	fixed3 lm = DecodeLightmap (color);
+	lm *= (1.0 - s.Reflectivity);
+	return fixed4 (lm, 0.0);
+}
+
+inline fixed4 LightingOrenNayar_CookTorrance_DualLightmap (MySurfaceOutput s, fixed4 indirect, fixed4 total, half blendFactor, half3 viewDir)
+{
+	float3 lmInd = DecodeLightmap (indirect);
+	float3 lmTotal = DecodeLightmap (total);
+
+	float3 l = lerp (lmInd, lmTotal, pow(s.Normal.z,2.0));
+	float3 lm = lerp (lmInd, l, blendFactor);
+	
+	lm *= (1.0 - s.Reflectivity);
+	return fixed4 (lm, 0.0);
+}
+	
+inline fixed4 LightingOrenNayar_CookTorrance_DirLightmap (MySurfaceOutput s, fixed4 color, fixed4 scale, half3 viewDir, bool surfFuncWritesNormal, out half3 specColor)
+{
+	UNITY_DIRBASIS
+	half3 scalePerBasisVector;
+	float3 lm = DirLightmapDiffuse (unity_DirBasis, color, scale, s.Normal, surfFuncWritesNormal, scalePerBasisVector);
+	float3 lightDir = normalize (scalePerBasisVector.x * unity_DirBasis[0] + scalePerBasisVector.y * unity_DirBasis[1] + scalePerBasisVector.z * unity_DirBasis[2]);
+	
+	// NOTE: multiplying atten by emprical const (0.75) otherwise diffuse and spec becomes too bright
+	// NOTE2: actually spec is still a little bit too bright
+	float atten = length (scalePerBasisVector * 0.75); 
+
+	_LightColor0.rgb = lm * 0.5f;
+	return LightingOrenNayar_CookTorrance (s, lightDir, viewDir, atten);
+}
+
+
+
+inline float4 SampleReflTex (sampler2D refl, float3 dir, float mipLevel0, float mipLevel1, float mipFrac)
+{
+	return lerp (
+		tex2Dlod (refl, float4(dir, mipLevel0)),
+		tex2Dlod (refl, float4(dir, mipLevel1)),
+		mipFrac);
+}
+
+inline float4 GlossyReflectionTerm (Input IN, sampler2D refl, float3 normal, float Q, float LOD)
+{
+	float W = Q / pow (2.0, 0.5);
+	
+	float4 o = 0;
+	float3 worldRefl;
+	
+	float mipLevel0 = floor (LOD);
+	float mipLevel1 = mipLevel0 + 1.0f;
+	float mipFrac = frac (LOD);
+	
+	worldRefl = WorldReflectionVector (IN, (normal + float3(Q,0,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	worldRefl = WorldReflectionVector (IN, (normal + float3(-Q,0,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	worldRefl = WorldReflectionVector (IN, (normal + float3(0,-Q,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	worldRefl = WorldReflectionVector (IN, (normal + float3(0,Q,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+
+	worldRefl = WorldReflectionVector (IN, (normal + float3(W,W,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	worldRefl = WorldReflectionVector (IN, (normal + float3(-W,W,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	worldRefl = WorldReflectionVector (IN, (normal + float3(W,-W,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	worldRefl = WorldReflectionVector (IN, (normal + float3(-W,-W,0)));
+	o += SampleReflTex (refl, worldRefl, mipLevel0, mipLevel1, mipFrac);
+	
+	o /= 8.0;
+	return o;
+}
+
+sampler2D _EnvCube;
+inline float3 GlobalIllumination (Input IN, MySurfaceOutput s)
+{
+	float3 normal = normalize (s.Normal);
+	float3 worldRefl = normalize (WorldReflectionVector (IN, normal));
+	fixed3 worldN = WorldNormalVector (IN, normal);
+	
+	float Q = 0.25 * 0.33 * (1.0-pow(1.0-max(0, _Roughness - 0.033),2.0));// / 3.0;//256.0;
+	float LOD =  1.25*(1.0-pow(1.0-max(0, _Roughness),2.0)) * 8.0;
+				
+	LOD = max (EvalMipLevel (worldRefl, 256.0f), LOD);
+
+	float3 refl = GlossyReflectionTerm (IN, _EnvCube, normal, Q, LOD).xyz;
+	refl *= lerp (float3(1.0,1.0,1.0), s.Albedo, _Metalic);
+	
+	float3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
+	ambient += ShadeSH9 (float4 (worldN, 1.0)) * s.Albedo;
+	return lerp (ambient, refl, saturate (s.Reflectivity));
+}
+
+#endif
+		
+
+		sampler2D _MainTex;
+		sampler2D _BumpMap;
+		sampler2D _MainReflectivityTex;
+		sampler2D _MainRoughnessTex;
+		fixed4 _Color;
+		
+		void surf (Input IN, inout MySurfaceOutput o) {
+			half4 c = tex2D (_MainTex, IN.uv_MainTex);
+			o.Albedo = c.rgb * _Color.rgb;
+			o.Alpha = c.a;
+
+			o.Specular = tex2D (_MainReflectivityTex, IN.uv_MainTex).r;
+			o.Roughness = tex2D (_MainRoughnessTex, IN.uv_MainTex).r;
+			
+			o.Normal = UnpackNormal (tex2D(_BumpMap, IN.uv_BumpMap));
+
+			float NdotV = max (0.0, dot (o.Normal, normalize (IN.viewDir)));
+			o.Reflectivity = o.Specular * FresnelTerm (_Refl0*_Reflectivity, _Refl90*_Reflectivity, NdotV);
+
+			o.Emission = GlobalIllumination (IN, o);
+		}
+		#ifdef LIGHTMAP_OFF
+struct v2f_surf {
+  float4 pos : SV_POSITION;
+  float4 pack0 : TEXCOORD0;
+  float3 viewDir : TEXCOORD1;
+  fixed4 TtoW0 : TEXCOORD2;
+  fixed4 TtoW1 : TEXCOORD3;
+  fixed4 TtoW2 : TEXCOORD4;
+  fixed3 lightDir : TEXCOORD5;
+  fixed3 vlight : TEXCOORD6;
+  LIGHTING_COORDS(7,8)
+};
+#endif
+#ifndef LIGHTMAP_OFF
+struct v2f_surf {
+  float4 pos : SV_POSITION;
+  float4 pack0 : TEXCOORD0;
+  float3 viewDir : TEXCOORD1;
+  fixed4 TtoW0 : TEXCOORD2;
+  fixed4 TtoW1 : TEXCOORD3;
+  fixed4 TtoW2 : TEXCOORD4;
+  float4 lmapFadePos : TEXCOORD5;
+  float2 lmap : TEXCOORD6;
+  fixed3 lightDir : TEXCOORD7;
+  LIGHTING_COORDS(8,9)
+};
+#endif
+#ifndef LIGHTMAP_OFF
+float4 unity_LightmapST;
+float4 unity_ShadowFadeCenterAndType;
+#endif
+float4 _MainTex_ST;
+float4 _BumpMap_ST;
+v2f_surf vert_surf (appdata_full v) {
+  v2f_surf o;
+  o.pos = mul (UNITY_MATRIX_MVP, v.vertex);
+  o.pack0.xy = TRANSFORM_TEX(v.texcoord, _MainTex);
+  o.pack0.zw = TRANSFORM_TEX(v.texcoord, _BumpMap);
+  float3 viewDir = -ObjSpaceViewDir(v.vertex);
+  float3 worldRefl = mul ((float3x3)_Object2World, viewDir);
+  TANGENT_SPACE_ROTATION;
+  o.TtoW0 = float4(mul(rotation, _Object2World[0].xyz), worldRefl.x)*unity_Scale.w;
+  o.TtoW1 = float4(mul(rotation, _Object2World[1].xyz), worldRefl.y)*unity_Scale.w;
+  o.TtoW2 = float4(mul(rotation, _Object2World[2].xyz), worldRefl.z)*unity_Scale.w;
+  #ifndef LIGHTMAP_OFF
+  o.lmap.xy = v.texcoord1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
+  o.lmapFadePos.xyz = (mul(_Object2World, v.vertex).xyz - unity_ShadowFadeCenterAndType.xyz) * unity_ShadowFadeCenterAndType.w;
+  o.lmapFadePos.w = (-mul(UNITY_MATRIX_MV, v.vertex).z) * (1.0 - unity_ShadowFadeCenterAndType.w);
+  #endif
+  float3 worldN = mul((float3x3)_Object2World, SCALED_NORMAL);
+  float3 lightDir = mul (rotation, ObjSpaceLightDir(v.vertex));
+  o.lightDir = lightDir;
+  float3 viewDirForLight = mul (rotation, ObjSpaceViewDir(v.vertex));
+  o.viewDir = viewDirForLight;
+  #ifdef LIGHTMAP_OFF
+  o.vlight = 0.0;
+  #endif // LIGHTMAP_OFF
+  TRANSFER_VERTEX_TO_FRAGMENT(o);
+  return o;
+}
+#ifndef LIGHTMAP_OFF
+sampler2D unity_Lightmap;
+sampler2D unity_LightmapInd;
+float4 unity_LightmapFade;
+#endif
+fixed4 frag_surf (v2f_surf IN) : COLOR {
+  Input surfIN;
+  surfIN.uv_MainTex = IN.pack0.xy;
+  surfIN.uv_BumpMap = IN.pack0.zw;
+  surfIN.worldRefl = float3(IN.TtoW0.w, IN.TtoW1.w, IN.TtoW2.w);
+  surfIN.TtoW0 = IN.TtoW0.xyz;
+  surfIN.TtoW1 = IN.TtoW1.xyz;
+  surfIN.TtoW2 = IN.TtoW2.xyz;
+  surfIN.worldNormal = 0.0;
+  surfIN.TtoW0 = IN.TtoW0.xyz;
+  surfIN.TtoW1 = IN.TtoW1.xyz;
+  surfIN.TtoW2 = IN.TtoW2.xyz;
+  surfIN.viewDir = IN.viewDir;
+  MySurfaceOutput o;
+  o.Albedo = 0.0;
+  o.Emission = 0.0;
+  o.Specular = 0.0;
+  o.Alpha = 0.0;
+  surf (surfIN, o);
+  fixed atten = LIGHT_ATTENUATION(IN);
+  fixed4 c = 0;
+  c = LightingOrenNayar_CookTorrance (o, IN.lightDir, normalize(half3(IN.viewDir)), atten);
+  #ifdef LIGHTMAP_OFF
+  c.rgb += o.Albedo * IN.vlight;
+  #endif // LIGHTMAP_OFF
+  #ifndef LIGHTMAP_OFF
+  half3 lmFull = DecodeLightmap (tex2D(unity_Lightmap, IN.lmap.xy));
+  half3 lmIndirect = DecodeLightmap (tex2D(unity_LightmapInd, IN.lmap.xy));
+  float lmFade = length (IN.lmapFadePos) * unity_LightmapFade.z + unity_LightmapFade.w;
+  half3 lm = lerp (lmIndirect, lmFull, saturate(lmFade));
+  c.rgb *= saturate(1.0 - lmFade);
+  c.rgb += o.Albedo * lm;
+  c.a = o.Alpha;
+#endif // LIGHTMAP_OFF
+  c.rgb += o.Emission;
+  return c;
+}
