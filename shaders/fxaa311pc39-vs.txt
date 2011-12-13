@@ -1,0 +1,9 @@
+varying vec4 xlv_SV_POSITION;
+varying vec2 xlv_TEXCOORD0;
+varying vec4 xlv_TEXCOORD1;
+void main() {
+    gl_Position = gl_Vertex;
+    xlv_SV_POSITION = gl_Vertex;
+    xlv_TEXCOORD0 = gl_Vertex.xy;
+    xlv_TEXCOORD1 = gl_Vertex;
+}
