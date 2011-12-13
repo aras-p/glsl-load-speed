@@ -30,7 +30,7 @@ D3D9:         17.73ms (31.78ms less, or 2.79 times faster)
 
 **** Shader shaders/ssao:
 GL:           37.37ms
-GL Optimized: 35.74ms (1.63ms less, or 1.05 times faster)
+GL Optimized: 34.61ms (2.61ms less, or 1.08 times faster)
 D3D9:         24.79ms (12.58ms less, or 1.51 times faster)
 
 
