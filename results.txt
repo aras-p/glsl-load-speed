@@ -1,2 +1,18 @@
 Mac: Mac OS X 10.6.8, MacBookPro Core i7 2.66GHz, GeForce GT 330M
 PC: Win 7 64bit, Core i7 2.66GHz, Radeon HD 6870
+
+./GlslLoadSpeed shaders/treeleaf-vs.txt shaders/treeleaf-fs.txt
+Mac: 7.28ms
+./GlslLoadSpeed shaders/treeleaf-opt-vs.txt shaders/treeleaf-opt-fs.txt
+Mac: 2.52ms
+
+./GlslLoadSpeed shaders/fxaa311pc39-vs.txt shaders/fxaa311pc39-fs.txt
+Mac: 30.8ms
+./GlslLoadSpeed shaders/fxaa311pc39-vs.txt shaders/fxaa311pc39-opt-fs.txt
+Mac: 17.9ms
+
+./GlslLoadSpeed shaders/prepasslight-vs.txt shaders/prepasslight-fs.txt
+Mac: 4.77ms
+./GlslLoadSpeed shaders/prepasslight-opt-vs.txt shaders/prepasslight-opt-fs.txt
+Mac: 2.14ms
+
