@@ -220,6 +220,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\readme.txt"
+			>
+		</File>
+		<File
 			RelativePath="..\results.txt"
 			>
 		</File>

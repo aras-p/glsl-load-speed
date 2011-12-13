@@ -31,6 +31,16 @@ Raw: 18.53ms
 Opt: 14.22ms (4.31ms or 1.30 times faster)
 
 
+**** Parallax Normal mapping w/ Specular & shadows
+
+./GlslLoadSpeed shaders/prlxspec
+
+PC:
+GL:           22.60ms
+GL Optimized: 19.58ms (3.02ms less, or 1.15 times faster)
+D3D9:          5.73ms (16.87ms less, or 3.95 times faster)
+
+
 **** Mental Ray's architectural shader "clone" (complex & not optimized for realtime)
 
 ./GlslLoadSpeed shaders/miatest
@@ -40,3 +50,13 @@ PC:
 GL:           50.06ms
 GL Optimized: 42.32ms (7.74ms less, or 1.18 times faster)
 D3D9:         17.47ms (32.59ms less, or 2.86 times faster)
+
+
+**** SSAO
+
+./GlslLoadSpeed shaders/ssao
+
+PC:
+GL:           37.98ms
+GL Optimized: 35.99ms (1.99ms less, or 1.06 times faster)
+D3D9:         24.39ms (13.60ms less, or 1.56 times faster)
