@@ -7,8 +7,8 @@ PC: Win 7 64bit, Core i7 2.66GHz, Radeon HD 6870 (4.1.10750 Compatibility Profil
 Mac: 7.28ms
 PC: 23.38ms
 ./GlslLoadSpeed shaders/treeleaf-opt-vs.txt shaders/treeleaf-opt-fs.txt
-Mac: 2.52ms
-PC: 20.08ms
+Mac: 2.52ms (4.8ms or 2.88 times faster)
+PC: 20.08ms (3.3ms or 1.16 times faster)
 
 
 **** FXAA 3.11 PC 39 preset
@@ -17,8 +17,8 @@ PC: 20.08ms
 Mac: 30.8ms
 PC: 73.48ms
 ./GlslLoadSpeed shaders/fxaa311pc39-vs.txt shaders/fxaa311pc39-opt-fs.txt
-Mac: 17.9ms
-PC: 68.43ms
+Mac: 17.9ms (12.9ms or 1.72 times faster)
+PC: 68.43ms (5.1ms or 1.07 times faster)
 
 
 **** Prepass Lighting shader
@@ -27,5 +27,5 @@ PC: 68.43ms
 Mac: 4.77ms
 PC: 18.53ms
 ./GlslLoadSpeed shaders/prepasslight-opt-vs.txt shaders/prepasslight-opt-fs.txt
-Mac: 2.14ms
-PC: 14.22ms
+Mac: 2.14ms (2.63ms or 2.22 times faster)
+PC: 14.22ms (4.31ms or 1.30 times faster)
