@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS // shut up MSVC
 #include <cstdio>
 #include <string>
 #include <time.h>
@@ -18,18 +19,27 @@ extern "C" {
 #define GL_VERTEX_SHADER_ARB              0x8B31
 #define GL_FRAGMENT_SHADER_ARB            0x8B30
 #define GL_OBJECT_COMPILE_STATUS_ARB      0x8B81
+#define GL_OBJECT_LINK_STATUS_ARB         0x8B82
 	typedef void (WINAPI * PFNGLDELETEOBJECTARBPROC) (GLhandleARB obj);
 	typedef GLhandleARB (WINAPI * PFNGLCREATESHADEROBJECTARBPROC) (GLenum shaderType);
 	typedef void (WINAPI * PFNGLSHADERSOURCEARBPROC) (GLhandleARB shaderObj, GLsizei count, const GLcharARB* *string, const GLint *length);
 	typedef void (WINAPI * PFNGLCOMPILESHADERARBPROC) (GLhandleARB shaderObj);
 	typedef void (WINAPI * PFNGLGETINFOLOGARBPROC) (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
 	typedef void (WINAPI * PFNGLGETOBJECTPARAMETERIVARBPROC) (GLhandleARB obj, GLenum pname, GLint *params);
+	typedef GLhandleARB (WINAPI * PFNGLCREATEPROGRAMOBJECTARBPROC) (void);
+	typedef void (WINAPI * PFNGLATTACHOBJECTARBPROC) (GLhandleARB containerObj, GLhandleARB obj);
+	typedef void (WINAPI * PFNGLLINKPROGRAMARBPROC) (GLhandleARB programObj);
+	typedef void (WINAPI * PFNGLUSEPROGRAMOBJECTARBPROC) (GLhandleARB programObj);
 	static PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
 	static PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB;
 	static PFNGLSHADERSOURCEARBPROC glShaderSourceARB;
 	static PFNGLCOMPILESHADERARBPROC glCompileShaderARB;
 	static PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 	static PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
+	static PFNGLCREATEPROGRAMOBJECTARBPROC glCreateProgramObjectARB;
+	static PFNGLATTACHOBJECTARBPROC glAttachObjectARB;
+	static PFNGLLINKPROGRAMARBPROC glLinkProgramARB;
+	static PFNGLUSEPROGRAMOBJECTARBPROC glUseProgramObjectARB;
 }
 #else
 #include <OpenGL/OpenGL.h>
@@ -97,9 +107,13 @@ static bool InitializeOpenGL ()
 		glCompileShaderARB = (PFNGLCOMPILESHADERARBPROC)wglGetProcAddress("glCompileShaderARB");
 		glGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)wglGetProcAddress("glGetInfoLogARB");
 		glGetObjectParameterivARB = (PFNGLGETOBJECTPARAMETERIVARBPROC)wglGetProcAddress("glGetObjectParameterivARB");
+		glCreateProgramObjectARB = (PFNGLCREATEPROGRAMOBJECTARBPROC)wglGetProcAddress("glCreateProgramObjectARB");
+		glAttachObjectARB = (PFNGLATTACHOBJECTARBPROC)wglGetProcAddress("glAttachObjectARB");
+		glLinkProgramARB = (PFNGLLINKPROGRAMARBPROC)wglGetProcAddress("glLinkProgramARB");
+		glUseProgramObjectARB = (PFNGLUSEPROGRAMOBJECTARBPROC)wglGetProcAddress("glUseProgramObjectARB");
 	}
 #endif
-	
+
 	glViewport (0,0,1,1);
 	
 	return hasGLSL;
@@ -178,8 +192,8 @@ static bool TestShader (const string& vs, const string& fs)
         -1.0f,  1.0f,
         1.0f,   1.0f,
     };
-	glVertexAttribPointer(0, 2, GL_FLOAT, 0, 0, squareVertices);
-	glEnableVertexAttribArray(0);	
+	glVertexPointer (2, GL_FLOAT, 0, squareVertices);
+	glEnableClientState (GL_VERTEX_ARRAY);
 	CheckErrors ("set geom");
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	CheckErrors ("draw");
