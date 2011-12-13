@@ -1,0 +1,2 @@
+Mac: Mac OS X 10.6.8, MacBookPro Core i7 2.66GHz, GeForce GT 330M
+PC: Win 7 64bit, Core i7 2.66GHz, Radeon HD 6870
