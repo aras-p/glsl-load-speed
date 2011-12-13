@@ -3,3 +3,7 @@ GlslLoadSpeed
 *.dSYM
 *.pbxuser
 *.perspectivev3
+*.ncb
+*.pdb
+*.suo
+*.user
