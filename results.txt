@@ -34,62 +34,32 @@ GL Optimized: 35.74ms (1.63ms less, or 1.05 times faster)
 D3D9:         24.79ms (12.58ms less, or 1.51 times faster)
 
 
-**** Tree Leaf shader
+-------------------------------------------------------------------
+Mac OS X 10.6.8, MacBookPro Core i7 2.66GHz, GeForce GT 330M
+GL renderer: NVIDIA GeForce GT 330M OpenGL Engine
+GL version: 2.1 NVIDIA-1.6.36
 
-./GlslLoadSpeed shaders/treeleaf
-Mac: 7.28ms
-Mac: 2.52ms (4.8ms or 2.88 times faster)
-PC:
-Raw: 23.38ms
-Opt: 20.08ms (3.3ms or 1.16 times faster)
+**** Shader shaders/treeleaf:
+GL:           6.83ms
+GL Optimized: 2.48ms (4.35ms less, or 2.76 times faster)
 
+**** Shader shaders/fxaa311pc39:
+GL:           30.10ms
+GL Optimized: 16.47ms (13.63ms less, or 1.83 times faster)
 
-**** FXAA 3.11 PC 39 preset
+**** Shader shaders/prepasslight:
+GL:           4.45ms
+GL Optimized: 1.90ms (2.55ms less, or 2.34 times faster)
 
-./GlslLoadSpeed shaders/fxaa311pc39
-Mac: 30.8ms
-Mac: 17.9ms (12.9ms or 1.72 times faster)
-PC:
-Raw: 73.48ms
-Opt: 68.43ms (5.1ms or 1.07 times faster)
+**** Shader shaders/prlxspec:
+GL:           5.99ms
+GL Optimized: 2.40ms (3.59ms less, or 2.49 times faster)
 
+**** Shader shaders/miatest:
+GL:           26.57ms
+GL Optimized: 10.16ms (16.41ms less, or 2.61 times faster)
 
-**** Prepass Lighting shader
+**** Shader shaders/ssao:
+GL:           4.57ms
+GL Optimized: 1.96ms (2.61ms less, or 2.33 times faster)
 
-./GlslLoadSpeed shaders/prepasslight
-Mac: 4.77ms
-Mac: 2.14ms (2.63ms or 2.22 times faster)
-PC:
-Raw: 18.53ms
-Opt: 14.22ms (4.31ms or 1.30 times faster)
-
-
-**** Parallax Normal mapping w/ Specular & shadows
-
-./GlslLoadSpeed shaders/prlxspec
-
-PC:
-GL:           22.60ms
-GL Optimized: 19.58ms (3.02ms less, or 1.15 times faster)
-D3D9:          5.73ms (16.87ms less, or 3.95 times faster)
-
-
-**** Mental Ray's architectural shader "clone" (complex & not optimized for realtime)
-
-./GlslLoadSpeed shaders/miatest
-Mac:
-
-PC:
-GL:           50.06ms
-GL Optimized: 42.32ms (7.74ms less, or 1.18 times faster)
-D3D9:         17.47ms (32.59ms less, or 2.86 times faster)
-
-
-**** SSAO
-
-./GlslLoadSpeed shaders/ssao
-
-PC:
-GL:           37.98ms
-GL Optimized: 35.99ms (1.99ms less, or 1.06 times faster)
-D3D9:         24.39ms (13.60ms less, or 1.56 times faster)
