@@ -216,9 +216,9 @@ static bool TestShader (const string& vs, const string& fs)
 }
 
 
-static bool ReadStringFromFile (const char* pathName, std::string& output)
+static bool ReadStringFromFile (const string& pathName, std::string& output)
 {
-	FILE* file = fopen( pathName, "rb" );
+	FILE* file = fopen(pathName.c_str(), "rb");
 	if (file == NULL)
 		return false;
 	fseek(file, 0, SEEK_END);
@@ -241,7 +241,7 @@ static bool ReadStringFromFile (const char* pathName, std::string& output)
 }
 
 
-static void BenchmarkOnce (const string& vs, const string& fs)
+static void BenchmarkOnce (const string& name, const string& vs, const string& fs)
 {
 	#ifdef _MSC_VER
 	static bool timerInited = false;
@@ -276,15 +276,15 @@ static void BenchmarkOnce (const string& vs, const string& fs)
 	float timeTaken = ttt2.tv_sec + ttt2.tv_usec * 1.0e-6f;
 	#endif
 	
-	printf ("took %.3fms\n", timeTaken*1000.0f);
+	printf ("%s %.2fms\n", name.c_str(), timeTaken*1000.0f);
 }
 
 
 int main (int argc, char * const argv[])
 {
-	if (argc < 3)
+	if (argc < 2)
 	{
-		printf ("usage: GlslLoadSpeed <vsfile> <fsfile>\n");
+		printf ("usage: GlslLoadSpeed <filepat>\n");
 		return 1;
 	}
 	
@@ -293,20 +293,31 @@ int main (int argc, char * const argv[])
 		printf ("ERROR: no OpenGL/GLSL\n");
 		return 1;
 	}
-	
-	string vs, fs;
-	if (!ReadStringFromFile (argv[1], vs))
+
+	string basename = argv[1];
+
+	string vs, fs, vsopt, fsopt;
+	if (!ReadStringFromFile (basename+"-vs.txt", vs))
 	{
-		printf ("ERROR: can't read VS file %s\n", argv[1]);
+		printf ("ERROR: can't read VS file %s\n", (basename+"-vs.txt").c_str());
 		return 1;
 	}
-	if (!ReadStringFromFile (argv[2], fs))
+	if (!ReadStringFromFile (basename+"-fs.txt", fs))
 	{
-		printf ("ERROR: can't read FS file %s\n", argv[2]);
+		printf ("ERROR: can't read FS file %s\n", (basename+"-fs.txt").c_str());
+		return 1;
+	}
+	if (!ReadStringFromFile (basename+"-opt-vs.txt", vsopt))
+	{
+		vsopt = vs;
+	}
+	if (!ReadStringFromFile (basename+"-opt-fs.txt", fsopt))
+	{
+		printf ("ERROR: can't read FS optimized file %s\n", (basename+"-opt-fs.txt").c_str());
 		return 1;
 	}
 	
-	printf ("testing %s,%s\n", argv[1], argv[2]);
+	printf ("testing %s\n", basename.c_str());
 	
 	// create dummy shaders to prewarm/load the compiler
 	string dummyVS = "void main(void) { gl_Position = vec4(0.0); }";
@@ -316,10 +327,8 @@ int main (int argc, char * const argv[])
 		printf ("ERROR: failed to load dummy shaders\n");
 	}
 	
-	BenchmarkOnce (vs, fs);
-	BenchmarkOnce (vs, fs);
-	BenchmarkOnce (vs, fs);
-	
+	BenchmarkOnce ("Raw: ", vs, fs);
+	BenchmarkOnce ("Opt: ", vsopt, fsopt);	
 	
     return 0;
 }
