@@ -1,0 +1,11 @@
+varying vec2 xlv_TEXCOORD1;
+varying vec2 xlv_TEXCOORD0;
+
+uniform vec2 _NoiseScale;
+uniform vec4 _CameraDepthNormalsTexture_ST;
+void main ()
+{
+  gl_Position = (gl_ModelViewProjectionMatrix * gl_Vertex);
+  xlv_TEXCOORD0 = ((gl_MultiTexCoord0.xy * _CameraDepthNormalsTexture_ST.xy) + _CameraDepthNormalsTexture_ST.zw);
+  xlv_TEXCOORD1 = (gl_MultiTexCoord0.xy * _NoiseScale);
+}

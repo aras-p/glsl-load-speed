@@ -1,0 +1,13 @@
+vs_3_0
+; 6 ALU
+dcl_position o0
+dcl_texcoord0 o1
+dcl_texcoord1 o2
+dcl_position0 v0
+dcl_texcoord0 v1
+mad o1.xy, v1, c5, c5.zwzw
+mul o2.xy, v1, c4
+dp4 o0.w, v0, c3
+dp4 o0.z, v0, c2
+dp4 o0.y, v0, c1
+dp4 o0.x, v0, c0

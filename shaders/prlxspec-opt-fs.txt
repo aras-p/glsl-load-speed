@@ -1,0 +1,45 @@
+varying vec4 xlv_TEXCOORD5;
+varying vec3 xlv_TEXCOORD4;
+varying vec3 xlv_TEXCOORD3;
+varying vec3 xlv_TEXCOORD2;
+varying vec2 xlv_TEXCOORD1;
+varying vec4 xlv_TEXCOORD0;
+uniform vec4 _SpecColor;
+uniform float _Shininess;
+uniform sampler2D _ShadowMapTexture;
+uniform sampler2D _ParallaxMap;
+uniform float _Parallax;
+uniform sampler2D _MainTex;
+uniform vec4 _LightColor0;
+uniform sampler2D _Illum;
+uniform vec4 _Color;
+uniform sampler2D _BumpMap;
+void main ()
+{
+  vec4 c;
+  vec2 tmpvar_1;
+  vec3 v;
+  vec3 tmpvar_2;
+  tmpvar_2 = normalize (xlv_TEXCOORD2);
+  v = tmpvar_2;
+  v.z = (tmpvar_2.z + 0.42);
+  tmpvar_1 = (((texture2D (_ParallaxMap, xlv_TEXCOORD0.zw).w * _Parallax) - (_Parallax / 2.0)) * (tmpvar_2.xy / v.z));
+  vec4 tmpvar_3;
+  tmpvar_3 = texture2D (_MainTex, (xlv_TEXCOORD0.xy + tmpvar_1));
+  vec4 tmpvar_4;
+  tmpvar_4 = (tmpvar_3 * _Color);
+  vec3 normal;
+  normal.xy = ((texture2D (_BumpMap, (xlv_TEXCOORD0.zw + tmpvar_1)).wy * 2.0) - 1.0);
+  normal.z = sqrt (((1.0 - (normal.x * normal.x)) - (normal.y * normal.y)));
+  vec4 tmpvar_5;
+  tmpvar_5 = texture2DProj (_ShadowMapTexture, xlv_TEXCOORD5);
+  vec4 c_i0_i1;
+  float tmpvar_6;
+  tmpvar_6 = (pow (max (0.0, dot (normal, normalize ((xlv_TEXCOORD3 + normalize (xlv_TEXCOORD2))))), (_Shininess * 128.0)) * tmpvar_3.w);
+  c_i0_i1.xyz = ((((tmpvar_4.xyz * _LightColor0.xyz) * max (0.0, dot (normal, xlv_TEXCOORD3))) + ((_LightColor0.xyz * _SpecColor.xyz) * tmpvar_6)) * (tmpvar_5.x * 2.0));
+  c_i0_i1.w = (tmpvar_4.w + (((_LightColor0.w * _SpecColor.w) * tmpvar_6) * tmpvar_5.x));
+  c = c_i0_i1;
+  c.xyz = (c_i0_i1.xyz + (tmpvar_4.xyz * xlv_TEXCOORD4));
+  c.xyz = (c.xyz + (tmpvar_4.xyz * texture2D (_Illum, (xlv_TEXCOORD1 + tmpvar_1)).w));
+  gl_FragData[0] = c;
+}

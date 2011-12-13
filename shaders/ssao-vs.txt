@@ -1,0 +1,41 @@
+struct v2f_vertex_lit {
+    vec2 uv;
+    vec4 diff;
+    vec4 spec;
+};
+struct v2f_img {
+    vec4 pos;
+    vec2 uv;
+};
+struct appdata_img {
+    vec4 vertex;
+    vec2 texcoord;
+};
+struct v2f_ao {
+    vec4 pos;
+    vec2 uv;
+    vec2 uvr;
+};
+uniform vec4 _CameraDepthNormalsTexture_ST;
+uniform vec2 _NoiseScale;
+
+v2f_ao vert_ao( in appdata_img v );
+v2f_ao vert_ao( in appdata_img v ) {
+    v2f_ao o;
+    o.pos = ( gl_ModelViewProjectionMatrix * v.vertex );
+    o.uv = ((v.texcoord.xy  * _CameraDepthNormalsTexture_ST.xy ) + _CameraDepthNormalsTexture_ST.zw );
+    o.uvr = (v.texcoord.xy  * _NoiseScale);
+    return o;
+}
+varying vec2 xlv_TEXCOORD0;
+varying vec2 xlv_TEXCOORD1;
+void main() {
+    v2f_ao xl_retval;
+    appdata_img xlt_v;
+    xlt_v.vertex = vec4( gl_Vertex);
+    xlt_v.texcoord = vec2( gl_MultiTexCoord0);
+    xl_retval = vert_ao( xlt_v);
+    gl_Position = vec4( xl_retval.pos);
+    xlv_TEXCOORD0 = vec2( xl_retval.uv);
+    xlv_TEXCOORD1 = vec2( xl_retval.uvr);
+}

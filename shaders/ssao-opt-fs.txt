@@ -1,0 +1,87 @@
+varying vec2 xlv_TEXCOORD1;
+varying vec2 xlv_TEXCOORD0;
+uniform sampler2D _RandomTexture;
+uniform vec4 _ProjectionParams;
+uniform vec4 _Params;
+uniform sampler2D _CameraDepthNormalsTexture;
+void main ()
+{
+  vec3 RAND_SAMPLES[26];
+  RAND_SAMPLES[0] = vec3(0.219661, 0.903264, 0.225468);
+  RAND_SAMPLES[1] = vec3(0.0591668, 0.220151, -0.14303);
+  RAND_SAMPLES[2] = vec3(-0.415225, 0.132086, 0.703673);
+  RAND_SAMPLES[3] = vec3(-0.379081, 0.145415, 0.100605);
+  RAND_SAMPLES[4] = vec3(0.314961, -0.129458, 0.704452);
+  RAND_SAMPLES[5] = vec3(-0.110841, 0.216284, 0.133628);
+  RAND_SAMPLES[6] = vec3(0.658012, -0.439597, -0.291937);
+  RAND_SAMPLES[7] = vec3(0.537791, 0.311219, 0.426864);
+  RAND_SAMPLES[8] = vec3(-0.275254, 0.0762595, -0.127341);
+  RAND_SAMPLES[9] = vec3(-0.191564, -0.497342, -0.312963);
+  RAND_SAMPLES[10] = vec3(-0.263477, 0.527792, -0.110745);
+  RAND_SAMPLES[11] = vec3(0.824275, 0.0243415, 0.060491);
+  RAND_SAMPLES[12] = vec3(0.0626271, -0.212864, -0.0367156);
+  RAND_SAMPLES[13] = vec3(-0.179566, -0.354386, 0.0792435);
+  RAND_SAMPLES[14] = vec3(0.0603963, 0.24629, 0.450118);
+  RAND_SAMPLES[15] = vec3(-0.778634, -0.381485, -0.239126);
+  RAND_SAMPLES[16] = vec3(0.279292, 0.248728, -0.0518534);
+  RAND_SAMPLES[17] = vec3(0.184138, 0.169699, -0.893628);
+  RAND_SAMPLES[18] = vec3(-0.347978, 0.472577, -0.719685);
+  RAND_SAMPLES[19] = vec3(-0.136502, -0.251342, 0.470937);
+  RAND_SAMPLES[20] = vec3(0.128039, -0.563242, 0.341928);
+  RAND_SAMPLES[21] = vec3(-0.480023, -0.189947, 0.239881);
+  RAND_SAMPLES[22] = vec3(0.638915, 0.119101, -0.527121);
+  RAND_SAMPLES[23] = vec3(0.193282, -0.36921, -0.606059);
+  RAND_SAMPLES[24] = vec3(-0.346545, -0.165465, -0.674676);
+  RAND_SAMPLES[25] = vec3(0.244842, -0.161096, 0.128937);
+  vec2 tmpvar_1;
+  tmpvar_1 = xlv_TEXCOORD0;
+  vec3 samples[26];
+  samples = RAND_SAMPLES;
+  int s;
+  float occ;
+  float scale;
+  vec3 viewNorm;
+  float depth;
+  vec3 randN;
+  occ = 0.0;
+  s = 0;
+  randN = ((texture2D (_RandomTexture, xlv_TEXCOORD1).xyz * 2.0) - 1.0);
+  vec4 tmpvar_2;
+  tmpvar_2 = texture2D (_CameraDepthNormalsTexture, xlv_TEXCOORD0);
+  vec3 n;
+  vec3 tmpvar_3;
+  tmpvar_3 = ((tmpvar_2.xyz * vec3(3.5554, 3.5554, 0.0)) + vec3(-1.7777, -1.7777, 1.0));
+  float tmpvar_4;
+  tmpvar_4 = (2.0 / dot (tmpvar_3, tmpvar_3));
+  n.xy = (tmpvar_4 * tmpvar_3.xy);
+  n.z = (tmpvar_4 - 1.0);
+  viewNorm = n;
+  float tmpvar_5;
+  tmpvar_5 = (dot (tmpvar_2.zw, vec2(1.0, 0.00392157)) * _ProjectionParams.z);
+  depth = tmpvar_5;
+  scale = (_Params.x / tmpvar_5);
+  for (int s = 0; s < 26; ) {
+    vec3 tmpvar_6;
+    tmpvar_6 = reflect (samples[s], randN);
+    float tmpvar_7;
+    tmpvar_7 = dot (viewNorm, tmpvar_6);
+    float tmpvar_8;
+    if ((tmpvar_7 < 0.0)) {
+      tmpvar_8 = 1.0;
+    } else {
+      tmpvar_8 = -1.0;
+    };
+    vec3 tmpvar_9;
+    tmpvar_9 = ((tmpvar_6 * -(tmpvar_8)) + (viewNorm * 0.3));
+    float tmpvar_10;
+    tmpvar_10 = clamp (((depth - (tmpvar_9.z * _Params.x)) - (dot (texture2D (_CameraDepthNormalsTexture, (tmpvar_1 + (tmpvar_9.xy * scale))).zw, vec2(1.0, 0.00392157)) * _ProjectionParams.z)), 0.0, 1.0);
+    if ((tmpvar_10 > _Params.y)) {
+      occ = (occ + pow ((1.0 - tmpvar_10), _Params.z));
+    };
+    s = (s + 1);
+  };
+  float tmpvar_11;
+  tmpvar_11 = (occ / 26.0);
+  occ = tmpvar_11;
+  gl_FragData[0] = vec4((1.0 - tmpvar_11));
+}
