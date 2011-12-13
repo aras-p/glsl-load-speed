@@ -22,6 +22,7 @@ static D3DXAssembleShaderFunc s_D3DXAssemble;
 #include <cstdio>
 #include <string>
 #include <time.h>
+#include <algorithm>
 
 #ifdef __APPLE__
 #include <sys/time.h>
@@ -354,6 +355,11 @@ static bool TestShaderD3D (ID3DXBuffer* vscode, ID3DXBuffer* pscode)
 	if (FAILED(hr))
 		return false;
 
+	s_D3DDevice->SetVertexShader (NULL);
+	s_D3DDevice->SetPixelShader (NULL);
+	vs->Release();
+	ps->Release();
+
 	// emulate glFinish
 	hr = s_D3DQuery->Issue (D3DISSUE_END);
 	if (FAILED(hr))
@@ -438,42 +444,56 @@ static float TimerEnd()
 	return timeTaken;
 }
 
+const int kRunTimes = 10;
 
-static void BenchmarkGL (const string& name, const string& vs, const string& fs)
+
+static float BenchmarkGL (const string& vs, const string& fs)
 {
-	TimerBegin ();
-
-	if (!TestShader (vs, fs))
+	float times[kRunTimes];
+	for (int i = 0; i < kRunTimes; ++i)
 	{
-		printf ("ERROR: error testing shaders\n");
-		return;
+		TimerBegin ();
+		if (!TestShader (vs, fs))
+		{
+			printf ("ERROR: error testing shaders\n");
+			return 0.0f;
+		}
+		float timeTaken = TimerEnd();
+		times[i] = timeTaken;
 	}
-	
-	float timeTaken = TimerEnd();	
-	printf ("%s %.2fms\n", name.c_str(), timeTaken*1000.0f);
+	std::sort (times, times+kRunTimes);
+	return times[kRunTimes/2] * 1000.0f;
 }
 
 
-static void BenchmarkD3D9 (const string& name, const string& vs, const string& fs)
+#ifdef TEST_D3D9
+static float BenchmarkD3D9 (const string& vs, const string& fs)
 {
-	#ifdef TEST_D3D9
+	float times[kRunTimes];
 
-	ID3DXBuffer* vsCode = AssembleD3DShader (vs);
-	ID3DXBuffer* psCode = AssembleD3DShader (fs);
-
-	TimerBegin ();
-
-	if (!TestShaderD3D (vsCode, psCode))
+	for (int i = 0; i < kRunTimes; ++i)
 	{
-		printf ("ERROR: error testing D3D9 shaders\n");
-		return;
+		ID3DXBuffer* vsCode = AssembleD3DShader (vs);
+		ID3DXBuffer* psCode = AssembleD3DShader (fs);
+
+		TimerBegin ();
+
+		if (!TestShaderD3D (vsCode, psCode))
+		{
+			printf ("ERROR: error testing D3D9 shaders\n");
+			return 0.0f;
+		}
+
+		vsCode->Release();
+		psCode->Release();
+
+		float timeTaken = TimerEnd();	
+		times[i] = timeTaken;
 	}
-
-	float timeTaken = TimerEnd();	
-	printf ("%s %.2fms\n", name.c_str(), timeTaken*1000.0f);
-
-	#endif
+	std::sort (times, times+kRunTimes);
+	return times[kRunTimes/2] * 1000.0f;
 }
+#endif
 
 
 int main (int argc, char * const argv[])
@@ -518,7 +538,7 @@ int main (int argc, char * const argv[])
 	ReadStringFromFile (basename+"-d3d9-vs.txt", d3dvs);
 	ReadStringFromFile (basename+"-d3d9-ps.txt", d3dps);
 	
-	printf ("testing %s\n", basename.c_str());
+	printf ("testing %s...\n", basename.c_str());
 	
 	// create dummy shaders to prewarm/load the compiler
 	string dummyVS = "void main(void) { gl_Position = vec4(0.0); }";
@@ -528,12 +548,22 @@ int main (int argc, char * const argv[])
 		printf ("ERROR: failed to load dummy shaders\n");
 	}
 	
-	BenchmarkGL ("Raw: ", vs, fs);
-	BenchmarkGL ("Opt: ", vsopt, fsopt);	
+	float timeGL = BenchmarkGL (vs, fs);
+	float timeGLOpt = BenchmarkGL (vsopt, fsopt);
 
 	#ifdef TEST_D3D9
+	float timeD3D = 0.0f;
 	if (hasD3D && !d3dvs.empty() && !d3dps.empty())
-		BenchmarkD3D9("D3D: ", d3dvs, d3dps);
+		timeD3D = BenchmarkD3D9(d3dvs, d3dps);
+	#endif
+
+	printf ("GL:           %.2fms\n", timeGL);
+	printf ("GL Optimized: %.2fms (%.2fms less, or %.2f times faster)\n", timeGLOpt, timeGL-timeGLOpt, timeGL/timeGLOpt);
+	#ifdef TEST_D3D9
+	if (timeD3D != 0.0f)
+	{
+		printf ("D3D9:         %.2fms (%.2fms less, or %.2f times faster)\n", timeD3D, timeGL-timeD3D, timeGL/timeD3D);
+	}
 	#endif
 	
     return 0;

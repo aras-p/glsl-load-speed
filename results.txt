@@ -35,6 +35,8 @@ Opt: 14.22ms (4.31ms or 1.30 times faster)
 
 ./GlslLoadSpeed shaders/miatest
 Mac:
+
 PC:
-Raw: 49.90ms
-Opt: 42.30ms (6.8ms or 1.16 times faster)
+GL:           50.06ms
+GL Optimized: 42.32ms (7.74ms less, or 1.18 times faster)
+D3D9:         17.47ms (32.59ms less, or 2.86 times faster)
