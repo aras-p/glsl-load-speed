@@ -34,8 +34,9 @@ On Mac it's faster quite a lot!
 
 A big game might use 1000 to 10000 shaders. According to these results, even simple offline
 pre-optimization can save 3-10ms from each shader loading time. That is 3 to 100 seconds saved
-from loading time. Comparing loading speed to D3D9 bytecode loading speed, the savings are even
-larger!
+from loading time. I guess loading preoptimized GLSL bytecode would be even faster, but there's
+no way to measure that until GLSL has it. This test compares loading speed of D3D9 bytecode but
+of course that is not a fully apples-to-apples comparison.
 
 
 Source code includes parts of Ryan Gordon's Mojoshader [3] to assemble D3D9 shaders into bytecode.
