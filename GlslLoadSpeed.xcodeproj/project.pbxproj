@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2B7505611498C0DF002F44DA /* opengl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2B75055F1498C0DF002F44DA /* opengl.cpp */; };
 		2BC3755C14973B0300D1391B /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2BC3755B14973B0300D1391B /* OpenGL.framework */; };
 		2BC3756214973B0E00D1391B /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2BC3756114973B0E00D1391B /* AGL.framework */; };
 		8DD76F650486A84900D96B5E /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.cpp */; settings = {ATTRIBUTES = (); }; };
@@ -26,6 +27,8 @@
 
 /* Begin PBXFileReference section */
 		08FB7796FE84155DC02AAC07 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = src/main.cpp; sourceTree = "<group>"; };
+		2B75055F1498C0DF002F44DA /* opengl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = opengl.cpp; path = src/opengl.cpp; sourceTree = SOURCE_ROOT; };
+		2B7505601498C0DF002F44DA /* opengl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = opengl.h; path = src/opengl.h; sourceTree = SOURCE_ROOT; };
 		2BC3755B14973B0300D1391B /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		2BC3756114973B0E00D1391B /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = System/Library/Frameworks/AGL.framework; sourceTree = SDKROOT; };
 		8DD76F6C0486A84900D96B5E /* GlslLoadSpeed */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = GlslLoadSpeed; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -58,6 +61,8 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				2B75055F1498C0DF002F44DA /* opengl.cpp */,
+				2B7505601498C0DF002F44DA /* opengl.h */,
 				08FB7796FE84155DC02AAC07 /* main.cpp */,
 			);
 			name = Source;
@@ -122,6 +127,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8DD76F650486A84900D96B5E /* main.cpp in Sources */,
+				2B7505611498C0DF002F44DA /* opengl.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
