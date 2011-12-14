@@ -36,7 +36,12 @@ A big game might use 1000 to 10000 shaders. According to these results, even sim
 pre-optimization can save 3-10ms from each shader loading time. That is 3 to 100 seconds saved
 from loading time. Comparing loading speed to D3D9 bytecode loading speed, the savings are even
 larger!
+
+
+Source code includes parts of Ryan Gordon's Mojoshader [3] to assemble D3D9 shaders into bytecode.
+It felt like a saner choice than depending on a D3DX DLL from DirectX SDK.
  
 
 [1]: https://github.com/aras-p/hlsl2glslfork
 [2]: https://github.com/aras-p/glsl-optimizer
+[3]: http://icculus.org/mojoshader/
