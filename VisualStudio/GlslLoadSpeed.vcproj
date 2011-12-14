@@ -215,10 +215,14 @@
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath="..\main.cpp"
+		<Filter
+			Name="src"
 			>
-		</File>
+			<File
+				RelativePath="..\src\main.cpp"
+				>
+			</File>
+		</Filter>
 		<File
 			RelativePath="..\readme.txt"
 			>
