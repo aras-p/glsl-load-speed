@@ -41,6 +41,14 @@ of course that is not a fully apples-to-apples comparison.
 
 Source code includes parts of Ryan Gordon's Mojoshader [3] to assemble D3D9 shaders into bytecode.
 It felt like a saner choice than depending on a D3DX DLL from DirectX SDK.
+
+
+TODO:
+* Check on Mac OS X 10.7.x with Core profile.
+* Check on Windows with latest AMD drivers.
+* Check on Windows on NVIDIA hardware.
+* Check equivalent shaders (where possible) using ARB vertex/fragment program assembly.
+
  
 
 [1]: https://github.com/aras-p/hlsl2glslfork
