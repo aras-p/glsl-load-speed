@@ -1,6 +1,7 @@
+#include "opengl.h"
 #include "direct3d9.h"
 
-#include <cstdio>
+#include <stdio.h>
 #include <string>
 #include <time.h>
 #include <algorithm>
@@ -12,164 +13,12 @@
 using std::string;
 
 
-#ifdef _MSC_VER
-#include <windows.h>
-#include <gl/GL.h>
-extern "C" {
-	typedef char GLcharARB;		/* native character */
-	typedef unsigned int GLhandleARB;	/* shader object handle */
-#define GL_VERTEX_SHADER_ARB              0x8B31
-#define GL_FRAGMENT_SHADER_ARB            0x8B30
-#define GL_OBJECT_COMPILE_STATUS_ARB      0x8B81
-#define GL_OBJECT_LINK_STATUS_ARB         0x8B82
-	typedef void (WINAPI * PFNGLDELETEOBJECTARBPROC) (GLhandleARB obj);
-	typedef GLhandleARB (WINAPI * PFNGLCREATESHADEROBJECTARBPROC) (GLenum shaderType);
-	typedef void (WINAPI * PFNGLSHADERSOURCEARBPROC) (GLhandleARB shaderObj, GLsizei count, const GLcharARB* *string, const GLint *length);
-	typedef void (WINAPI * PFNGLCOMPILESHADERARBPROC) (GLhandleARB shaderObj);
-	typedef void (WINAPI * PFNGLGETINFOLOGARBPROC) (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
-	typedef void (WINAPI * PFNGLGETOBJECTPARAMETERIVARBPROC) (GLhandleARB obj, GLenum pname, GLint *params);
-	typedef GLhandleARB (WINAPI * PFNGLCREATEPROGRAMOBJECTARBPROC) (void);
-	typedef void (WINAPI * PFNGLATTACHOBJECTARBPROC) (GLhandleARB containerObj, GLhandleARB obj);
-	typedef void (WINAPI * PFNGLLINKPROGRAMARBPROC) (GLhandleARB programObj);
-	typedef void (WINAPI * PFNGLUSEPROGRAMOBJECTARBPROC) (GLhandleARB programObj);
-	static PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
-	static PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB;
-	static PFNGLSHADERSOURCEARBPROC glShaderSourceARB;
-	static PFNGLCOMPILESHADERARBPROC glCompileShaderARB;
-	static PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
-	static PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
-	static PFNGLCREATEPROGRAMOBJECTARBPROC glCreateProgramObjectARB;
-	static PFNGLATTACHOBJECTARBPROC glAttachObjectARB;
-	static PFNGLLINKPROGRAMARBPROC glLinkProgramARB;
-	static PFNGLUSEPROGRAMOBJECTARBPROC glUseProgramObjectARB;
-}
-#else
-#include <OpenGL/OpenGL.h>
-#include <AGL/agl.h>
-#include <dirent.h>
-#endif
-
-
-static bool InitializeOpenGL ()
-{
-	bool hasGLSL = false;
-	
-#ifdef _MSC_VER
-	// setup minimal required GL
-	HWND wnd = CreateWindowA(
-							 "STATIC",
-							 "GL",
-							 WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS |	WS_CLIPCHILDREN,
-							 0, 0, 16, 16,
-							 NULL, NULL,
-							 GetModuleHandle(NULL), NULL );
-	HDC dc = GetDC( wnd );
-	
-	PIXELFORMATDESCRIPTOR pfd = {
-		sizeof(PIXELFORMATDESCRIPTOR), 1,
-		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL,
-		PFD_TYPE_RGBA, 32,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0,
-		16, 0,
-		0, PFD_MAIN_PLANE, 0, 0, 0, 0
-	};
-	
-	int fmt = ChoosePixelFormat( dc, &pfd );
-	SetPixelFormat( dc, fmt, &pfd );
-	
-	HGLRC rc = wglCreateContext( dc );
-	wglMakeCurrent( dc, rc );
-	
-#else
-	GLint attributes[16];
-	int i = 0;
-	attributes[i++]=AGL_RGBA;
-	attributes[i++]=AGL_PIXEL_SIZE;
-	attributes[i++]=32;
-	attributes[i++]=AGL_NO_RECOVERY;
-	attributes[i++]=AGL_NONE;
-	
-	AGLPixelFormat pixelFormat = aglChoosePixelFormat(NULL,0,attributes);
-	AGLContext agl = aglCreateContext(pixelFormat, NULL);
-	aglSetCurrentContext (agl);
-	
-#endif
-	
-	// check if we have GLSL
-	const char* extensions = (const char*)glGetString(GL_EXTENSIONS);
-	hasGLSL = strstr(extensions, "GL_ARB_shader_objects") && strstr(extensions, "GL_ARB_vertex_shader") && strstr(extensions, "GL_ARB_fragment_shader");
-	
-#ifdef _MSC_VER
-	if (hasGLSL)
-	{
-		glDeleteObjectARB = (PFNGLDELETEOBJECTARBPROC)wglGetProcAddress("glDeleteObjectARB");
-		glCreateShaderObjectARB = (PFNGLCREATESHADEROBJECTARBPROC)wglGetProcAddress("glCreateShaderObjectARB");
-		glShaderSourceARB = (PFNGLSHADERSOURCEARBPROC)wglGetProcAddress("glShaderSourceARB");
-		glCompileShaderARB = (PFNGLCOMPILESHADERARBPROC)wglGetProcAddress("glCompileShaderARB");
-		glGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)wglGetProcAddress("glGetInfoLogARB");
-		glGetObjectParameterivARB = (PFNGLGETOBJECTPARAMETERIVARBPROC)wglGetProcAddress("glGetObjectParameterivARB");
-		glCreateProgramObjectARB = (PFNGLCREATEPROGRAMOBJECTARBPROC)wglGetProcAddress("glCreateProgramObjectARB");
-		glAttachObjectARB = (PFNGLATTACHOBJECTARBPROC)wglGetProcAddress("glAttachObjectARB");
-		glLinkProgramARB = (PFNGLLINKPROGRAMARBPROC)wglGetProcAddress("glLinkProgramARB");
-		glUseProgramObjectARB = (PFNGLUSEPROGRAMOBJECTARBPROC)wglGetProcAddress("glUseProgramObjectARB");
-	}
-#endif
-
-	const GLubyte* renderer = glGetString (GL_RENDERER);
-	const GLubyte* version = glGetString (GL_VERSION);
-	printf ("GL renderer: %s\n", renderer);
-	printf ("GL version: %s\n", version);
-
-	glViewport (0,0,1,1);
-	
-	return hasGLSL;
-}
-
-
-
-
-
-static void CheckErrors (const char* op)
-{
-	#if 1
-	GLenum err = glGetError();
-	if (err != GL_NO_ERROR)
-	{
-		printf ("ERROR: GL error doing %s: %i (%x)\n", op, err, err);
-	}
-	#endif
-}
-
-
-static GLhandleARB CreateShader (GLenum target, const string& s)
-{
-	const char* ptr = s.c_str();
-	GLhandleARB shader = glCreateShaderObjectARB (target);
-	glShaderSourceARB (shader, 1, &ptr, NULL);
-	glCompileShaderARB (shader);
-	
-	GLint status;
-	glGetObjectParameterivARB (shader, GL_OBJECT_COMPILE_STATUS_ARB, &status);
-	if (status == 0)
-	{
-		char log[4096];
-		GLsizei logLength;
-		glGetInfoLogARB (shader, sizeof(log), &logLength, log);
-		printf ("  glsl compile error:\n%s\n", log);
-		glDeleteObjectARB (shader);
-		return 0;
-	}
-	
-	return shader;
-}
-
 
 static bool TestShader (const string& vs, const string& fs)
 {
 	// compile
-	GLhandleARB shaderVS = CreateShader (GL_VERTEX_SHADER_ARB, vs);
-	GLhandleARB shaderFS = CreateShader (GL_FRAGMENT_SHADER_ARB, fs);
+	GLhandleARB shaderVS = CreateShaderGL (GL_VERTEX_SHADER_ARB, vs.c_str());
+	GLhandleARB shaderFS = CreateShaderGL (GL_FRAGMENT_SHADER_ARB, fs.c_str());
 	if (!shaderVS || !shaderFS)
 		return false;
 	
@@ -195,7 +44,8 @@ static bool TestShader (const string& vs, const string& fs)
 	
 	// use it and render dummy thing
 	glUseProgramObjectARB (program);
-	CheckErrors ("use program");
+	if (!CheckStatusGL("use program"))
+		return false;
 	
     const GLfloat squareVertices[] = {
         -1.0f, -1.0f,
@@ -205,18 +55,18 @@ static bool TestShader (const string& vs, const string& fs)
     };
 	glVertexPointer (2, GL_FLOAT, 0, squareVertices);
 	glEnableClientState (GL_VERTEX_ARRAY);
-	CheckErrors ("set geom");
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	CheckErrors ("draw");
+	if (!CheckStatusGL("draw"))
+		return false;
 	
 	// cleanup
 	glDeleteObjectARB (shaderVS);
 	glDeleteObjectARB (shaderFS);
 	glDeleteObjectARB (program);
-	CheckErrors ("delete");
 	
 	glFinish ();
-	CheckErrors ("finish");
+	if (!CheckStatusGL("finish"))
+		return false;
 	
 	return true;
 }

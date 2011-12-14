@@ -230,6 +230,14 @@
 				RelativePath="..\src\main.cpp"
 				>
 			</File>
+			<File
+				RelativePath="..\src\opengl.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\opengl.h"
+				>
+			</File>
 			<Filter
 				Name="mojoshader"
 				>
