@@ -1,23 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS // shut up MSVC
-
-#ifdef _MSC_VER
-#define TEST_D3D9 1
-#include <d3d9.h>
-#include <d3dx9shader.h>
-
-extern "C" {
-typedef HRESULT (WINAPI * D3DXAssembleShaderFunc)(
-				   LPCSTR                          pSrcData,
-				   UINT                            SrcDataLen,
-				   CONST D3DXMACRO*                pDefines,
-				   LPD3DXINCLUDE                   pInclude,
-				   DWORD                           Flags,
-				   LPD3DXBUFFER*                   ppShader,
-				   LPD3DXBUFFER*                   ppErrorMsgs);
-static HINSTANCE s_D3DXDll;
-static D3DXAssembleShaderFunc s_D3DXAssemble;
-}
-#endif
+#include "direct3d9.h"
 
 #include <cstdio>
 #include <string>
@@ -147,89 +128,6 @@ static bool InitializeOpenGL ()
 
 
 
-#ifdef TEST_D3D9
-
-static IDirect3D9* s_D3D;
-static IDirect3DDevice9* s_D3DDevice;
-static IDirect3DQuery9* s_D3DQuery;
-
-static bool InitializeD3D9 ()
-{
-	s_D3D = Direct3DCreate9(D3D_SDK_VERSION);
-	if(!s_D3D)
-		return false;
-	D3DDISPLAYMODE mode;
-	if (FAILED(s_D3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &mode)))
-		return false;
-
-	HWND window = ::GetDesktopWindow();
-
-	D3DPRESENT_PARAMETERS params;
-	ZeroMemory(&params, sizeof(params));
-	params.BackBufferWidth = 64;
-	params.BackBufferHeight = 64;
-	params.BackBufferFormat = mode.Format;
-	params.BackBufferCount = 1;
-	params.hDeviceWindow = window;
-
-	params.AutoDepthStencilFormat = D3DFMT_D16;
-	params.EnableAutoDepthStencil = TRUE;
-
-	params.Windowed = TRUE;
-	params.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	params.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-
-	if (FAILED(s_D3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &s_D3DDevice)))
-	{
-		if (FAILED(s_D3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &params, &s_D3DDevice)))
-			return false;
-	}
-
-	s_D3DXDll = ::LoadLibraryA ("d3dx9_43.dll");
-	if (!s_D3DXDll)
-		return false;
-
-	s_D3DXAssemble = (D3DXAssembleShaderFunc)::GetProcAddress (s_D3DXDll, "D3DXAssembleShader");
-	if (!s_D3DXAssemble)
-		return false;
-
-	D3DVIEWPORT9 vp;
-	vp.X = 0;
-	vp.Y = 0;
-	vp.Width = 1;
-	vp.Height = 1;
-	vp.MinZ = 0.0f;
-	vp.MaxZ = 1.0f;
-	s_D3DDevice->SetViewport (&vp);
-
-	s_D3DDevice->CreateQuery (D3DQUERYTYPE_EVENT, &s_D3DQuery);
-
-	s_D3DDevice->BeginScene();
-
-	return true;
-}
-
-static ID3DXBuffer* AssembleD3DShader (const std::string& source)
-{
-	ID3DXBuffer *compiledShader, *compileErrors;
-	DWORD flags = 0;
-	HRESULT hr = s_D3DXAssemble (source.c_str(), source.size(), NULL, NULL, flags, &compiledShader, &compileErrors);
-	if(FAILED(hr))
-	{
-		if (compileErrors && compileErrors->GetBufferSize() > 0)
-		{
-			printf ("ERROR: d3d shader assembly failed: %s\n", (const char*)compileErrors->GetBufferPointer());
-			compileErrors->Release();
-		}
-		if(compiledShader)
-			compiledShader->Release();
-		return NULL;
-	}
-	return compiledShader;
-}
-
-#endif // TEST_D3D9
-
 
 
 static void CheckErrors (const char* op)
@@ -324,23 +222,23 @@ static bool TestShader (const string& vs, const string& fs)
 }
 
 
-#ifdef TEST_D3D9
-static bool TestShaderD3D (ID3DXBuffer* vscode, ID3DXBuffer* pscode)
+#ifdef D3D9_AVAILABLE
+static bool TestShaderD3D (const MOJOSHADER_parseData* vscode, const MOJOSHADER_parseData* pscode)
 {
 	HRESULT hr;
 	IDirect3DVertexShader9* vs;
 	IDirect3DPixelShader9* ps;
-	hr = s_D3DDevice->CreateVertexShader ((const DWORD*)vscode->GetBufferPointer(), &vs);
+	hr = g_D3D9Device->CreateVertexShader ((const DWORD*)vscode->output, &vs);
 	if (FAILED(hr))
 		return false;
-	hr = s_D3DDevice->CreatePixelShader ((const DWORD*)pscode->GetBufferPointer(), &ps);
+	hr = g_D3D9Device->CreatePixelShader ((const DWORD*)pscode->output, &ps);
 	if (FAILED(hr))
 		return false;
 
-	hr = s_D3DDevice->SetVertexShader (vs);
+	hr = g_D3D9Device->SetVertexShader (vs);
 	if (FAILED(hr))
 		return false;
-	hr = s_D3DDevice->SetPixelShader (ps);
+	hr = g_D3D9Device->SetPixelShader (ps);
 	if (FAILED(hr))
 		return false;
 
@@ -350,23 +248,23 @@ static bool TestShaderD3D (ID3DXBuffer* vscode, ID3DXBuffer* pscode)
 		-1.0f,  1.0f, 0,
 		1.0f,   1.0f, 0,
 	};
-	hr = s_D3DDevice->SetFVF (D3DFVF_XYZ);
-	hr = s_D3DDevice->DrawPrimitiveUP (D3DPT_TRIANGLESTRIP, 2, squareVertices, 12);
+	hr = g_D3D9Device->SetFVF (D3DFVF_XYZ);
+	hr = g_D3D9Device->DrawPrimitiveUP (D3DPT_TRIANGLESTRIP, 2, squareVertices, 12);
 	if (FAILED(hr))
 		return false;
 
-	s_D3DDevice->SetVertexShader (NULL);
-	s_D3DDevice->SetPixelShader (NULL);
+	g_D3D9Device->SetVertexShader (NULL);
+	g_D3D9Device->SetPixelShader (NULL);
 	vs->Release();
 	ps->Release();
 
 	// emulate glFinish
-	hr = s_D3DQuery->Issue (D3DISSUE_END);
+	hr = g_D3D9Query->Issue (D3DISSUE_END);
 	if (FAILED(hr))
 		return false;
 	do 
 	{
-		hr = s_D3DQuery->GetData (NULL, 0, D3DGETDATA_FLUSH);
+		hr = g_D3D9Query->GetData (NULL, 0, D3DGETDATA_FLUSH);
 	} while (hr == S_FALSE);
 
 	return true;
@@ -466,15 +364,15 @@ static float BenchmarkGL (const string& vs, const string& fs)
 }
 
 
-#ifdef TEST_D3D9
+#ifdef D3D9_AVAILABLE
 static float BenchmarkD3D9 (const string& vs, const string& fs)
 {
 	float times[kRunTimes];
 
 	for (int i = 0; i < kRunTimes; ++i)
 	{
-		ID3DXBuffer* vsCode = AssembleD3DShader (vs);
-		ID3DXBuffer* psCode = AssembleD3DShader (fs);
+		const MOJOSHADER_parseData* vsCode = AssembleShaderD3D9 (vs.c_str(), vs.size());
+		const MOJOSHADER_parseData* psCode = AssembleShaderD3D9 (fs.c_str(), fs.size());
 
 		TimerBegin ();
 
@@ -484,8 +382,8 @@ static float BenchmarkD3D9 (const string& vs, const string& fs)
 			return 0.0f;
 		}
 
-		vsCode->Release();
-		psCode->Release();
+		ReleaseAssembledShaderD3D9 (vsCode);
+		ReleaseAssembledShaderD3D9 (psCode);
 
 		float timeTaken = TimerEnd();	
 		times[i] = timeTaken;
@@ -503,8 +401,8 @@ int main (int argc, char * const argv[])
 		printf ("ERROR: no OpenGL/GLSL\n");
 		return 1;
 	}
-	#ifdef TEST_D3D9
-	bool hasD3D = InitializeD3D9 ();
+	#ifdef D3D9_AVAILABLE
+	bool hasD3D = InitializeD3D9 (::GetDesktopWindow());
 	#endif
 
 	// create dummy shaders to prewarm/load the compiler
@@ -556,7 +454,7 @@ int main (int argc, char * const argv[])
 		float timeGL = BenchmarkGL (vs, fs);
 		float timeGLOpt = BenchmarkGL (vsopt, fsopt);
 
-		#ifdef TEST_D3D9
+		#ifdef D3D9_AVAILABLE
 		float timeD3D = 0.0f;
 		if (hasD3D && !d3dvs.empty() && !d3dps.empty())
 			timeD3D = BenchmarkD3D9(d3dvs, d3dps);
@@ -564,7 +462,7 @@ int main (int argc, char * const argv[])
 
 		printf ("GL:           %.2fms\n", timeGL);
 		printf ("GL Optimized: %.2fms (%.2fms less, or %.2f times faster)\n", timeGLOpt, timeGL-timeGLOpt, timeGL/timeGLOpt);
-		#ifdef TEST_D3D9
+		#ifdef D3D9_AVAILABLE
 		if (timeD3D != 0.0f)
 		{
 			printf ("D3D9:         %.2fms (%.2fms less, or %.2f times faster)\n", timeD3D, timeGL-timeD3D, timeGL/timeD3D);
